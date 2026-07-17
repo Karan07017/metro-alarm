@@ -1,0 +1,60 @@
+# ==========================
+# Node Modules
+# ==========================
+node_modules/
+**/node_modules/
+
+# ==========================
+# Environment Files
+# ==========================
+.env
+.env.*
+!.env.example
+
+# ==========================
+# Build Output
+# ==========================
+dist/
+build/
+coverage/
+
+# Vite
+client/dist/
+
+# ==========================
+# Logs
+# ==========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================
+# OS Files
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# IDE Files
+# ==========================
+.vscode/
+.idea/
+*.swp
+
+# ==========================
+# Cache
+# ==========================
+.cache/
+.parcel-cache/
+.eslintcache
+
+# ==========================
+# Runtime Files
+# ==========================
+pids
+*.pid
+*.seed
+*.pid.lock
