@@ -239,6 +239,15 @@ If GPS mode was selected but a location error is detected mid-journey, the app *
 
 ---
 
+## ⚠️ Known Limitations
+
+- **No reliable background execution.** If the browser tab is minimized, switched away from, or the screen is locked, browsers throttle or fully suspend JS execution (timers, `watchPosition`, `AudioContext`). This means the alarm can fire **late or not at all** while the app is backgrounded — most noticeable on mobile browsers, less severe but still possible on desktop.
+- The **Screen Wake Lock** only keeps the screen on while the tab is active/foregrounded; it does not keep the app running once the tab itself goes to the background, and it is auto-released by the browser when the tab is hidden.
+- Native **Notifications** may still appear for a short while after backgrounding (as long as the browser process is alive), but this isn't guaranteed — the OS can kill the background browser process at any time.
+- A proper fix requires a **service worker with Push API** for true OS-level background delivery (see Future Improvements).
+
+---
+
 ## 🚧 Future Improvements
 
 - Wire up the existing Red Line station data into the seed scripts to make it operational
