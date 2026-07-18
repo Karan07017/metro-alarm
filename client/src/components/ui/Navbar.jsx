@@ -17,7 +17,7 @@ export default function Navbar({ page, onNavigate, onLogout, showNav }) {
             className="flex items-center gap-2 font-display font-semibold text-text"
           > */}
           <button
-            onClick={() => onNavigate("mode-selection")}
+            onClick={() => onNavigate("home")}
             className="
     group
     flex

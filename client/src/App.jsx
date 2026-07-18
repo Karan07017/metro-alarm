@@ -103,7 +103,14 @@ function AppShell() {
     page === 'history' ? (
       <HistoryPage token={token} />
     ) : page === 'settings' ? (
-      <SettingsPage user={user} alarm={alarm} onLogout={handleLogout} />
+      // <SettingsPage user={user} alarm={alarm} onLogout={handleLogout} />
+      // NEW
+      <SettingsPage
+        user={user}
+        alarm={alarm}
+        onLogout={handleLogout}
+        onResume={() => setPage('home')}
+      />
     ) : (
       homeContent
     );

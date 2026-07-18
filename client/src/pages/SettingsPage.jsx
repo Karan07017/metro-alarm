@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
-import { User, Mail, MapPin, Clock3, LogOut, Radar } from 'lucide-react';
+// import { User, Mail, MapPin, Clock3, LogOut, Radar } from 'lucide-react';
+import { User, Mail, MapPin, Clock3, LogOut, Radar, ArrowRight } from 'lucide-react';
 import Container from '../components/ui/Container';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
-export default function SettingsPage({ user, alarm, onLogout }) {
+export default function SettingsPage({ user, alarm, onLogout, onResume }) {
   return (
     <Container size="sm" className="py-10 sm:py-14">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -37,7 +38,20 @@ export default function SettingsPage({ user, alarm, onLogout }) {
                 label="Mode"
                 value={alarm.triggerMode === 'time-fallback' ? 'Time Based' : 'GPS Based'}
               />
+              {/* <Row icon={MapPin} label="Destination" value={alarm.destinationStation} />
+            </div> */}
+            // NEW
               <Row icon={MapPin} label="Destination" value={alarm.destinationStation} />
+              {alarm.status === 'active' && onResume && (
+                <Button
+                  variant={alarm.triggerMode === 'time-fallback' ? 'time' : 'primary'}
+                  icon={ArrowRight}
+                  onClick={onResume}
+                  className="w-full mt-2 flex-row-reverse"
+                >
+                  Resume Journey
+                </Button>
+              )}
             </div>
           ) : (
             <p className="text-sm text-faint">No alarm set right now.</p>
