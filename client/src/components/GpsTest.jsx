@@ -100,7 +100,7 @@ function GpsTest({ alarm, token, onCancel }) {
   // once from the server-issued startTime. Neutralizes any client/server
   // clock disagreement so the countdown always respects the backend's
   // computed duration, instead of comparing two different clocks directly.
-  const clockOffsetRef = useRef(null);
+  // const clockOffsetRef = useRef(null);
 
   // Screen ko awake rakhta hai jab tak alarm active hai — isse mobile browser
   // ke tab ko suspend karne ka chance kaafi kam ho jaata hai. Poori tarah se
@@ -225,16 +225,22 @@ function GpsTest({ alarm, token, onCancel }) {
   // }, [fallbackMode, alarm, triggered]);
 
   // NEW
+  // useEffect(() => {
+  //   if (!fallbackMode || !alarm || triggered) return;
+  //   if (clockOffsetRef.current == null && alarm.startTime) {
+  //     clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
+  //   }
+  //   const offset = clockOffsetRef.current || 0;
+  //   const eta = new Date(alarm.expectedArrivalTime);
+  //   const correctedNow = new Date(now - offset);
+  //   setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
+  //   if (correctedNow >= eta) fireAlarm();
+  // }, [now, fallbackMode, alarm, triggered]);
   useEffect(() => {
     if (!fallbackMode || !alarm || triggered) return;
-    if (clockOffsetRef.current == null && alarm.startTime) {
-      clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
-    }
-    const offset = clockOffsetRef.current || 0;
     const eta = new Date(alarm.expectedArrivalTime);
-    const correctedNow = new Date(now - offset);
     setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
-    if (correctedNow >= eta) fireAlarm();
+    if (new Date(now) >= eta) fireAlarm();
   }, [now, fallbackMode, alarm, triggered]);
 
   const fireAlarm = async () => {
