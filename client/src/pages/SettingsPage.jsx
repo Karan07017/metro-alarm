@@ -40,7 +40,7 @@ export default function SettingsPage({ user, alarm, onLogout, onResume }) {
               />
               {/* <Row icon={MapPin} label="Destination" value={alarm.destinationStation} />
             </div> */}
-            // NEW
+            {/* NEW */}
               <Row icon={MapPin} label="Destination" value={alarm.destinationStation} />
               {alarm.status === 'active' && onResume && (
                 <Button
