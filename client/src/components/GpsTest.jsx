@@ -92,10 +92,11 @@ function GpsTest({ alarm, token, onCancel }) {
   const [fallbackMode, setFallbackMode] = useState(alarm.triggerMode === 'time-fallback');
   const [distance, setDistance] = useState(null);
   const [triggered, setTriggered] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const watchIdRef = useRef(null);
   const wakeLockRef = useRef(null);
   const initialDistanceRef = useRef(null);
-   // Offset between this device's clock and the server's clock, captured
+  // Offset between this device's clock and the server's clock, captured
   // once from the server-issued startTime. Neutralizes any client/server
   // clock disagreement so the countdown always respects the backend's
   // computed duration, instead of comparing two different clocks directly.
@@ -130,8 +131,14 @@ function GpsTest({ alarm, token, onCancel }) {
     return () => {
       released = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current?.release().catch(() => { });
     };
+  }, []);
+
+  // NEW (added)
+  useEffect(() => {
+    const tickId = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tickId);
   }, []);
 
   useEffect(() => {
@@ -193,48 +200,42 @@ function GpsTest({ alarm, token, onCancel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, fallbackMode, alarm, triggered]);
 
-  // Time-fallback ka apna check — GPS position update hone ka wait nahi karta,
-  // kyunki fallback mode mein watchPosition se naye updates aana hi band ho jaate hain.
-  // Isliye har 5 second mein khud poll karke check karta hai ki ETA nikal gaya ya nahi.
+  // NEW
   // useEffect(() => {
   //   if (!fallbackMode || !alarm || triggered) return;
 
+  //   if (clockOffsetRef.current == null && alarm.startTime) {
+  //     // How far ahead/behind this device's clock is vs. the server's,
+  //     // measured once against the server-issued startTime.
+  //     clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
+  //   }
+  //   const offset = clockOffsetRef.current || 0;
+
   //   const checkEta = () => {
   //     const eta = new Date(alarm.expectedArrivalTime);
+  //     const correctedNow = new Date(Date.now() - offset);
   //     setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
-  //     if (new Date() >= eta) fireAlarm();
+  //     if (correctedNow >= eta) fireAlarm();
   //   };
 
   //   checkEta(); // turant ek baar check karo
   //   const intervalId = setInterval(checkEta, 5000);
 
   //   return () => clearInterval(intervalId);
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [fallbackMode, alarm, triggered]);
 
   // NEW
   useEffect(() => {
     if (!fallbackMode || !alarm || triggered) return;
-
     if (clockOffsetRef.current == null && alarm.startTime) {
-      // How far ahead/behind this device's clock is vs. the server's,
-      // measured once against the server-issued startTime.
       clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
     }
     const offset = clockOffsetRef.current || 0;
-
-    const checkEta = () => {
-      const eta = new Date(alarm.expectedArrivalTime);
-      const correctedNow = new Date(Date.now() - offset);
-      setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
-      if (correctedNow >= eta) fireAlarm();
-    };
-
-    checkEta(); // turant ek baar check karo
-    const intervalId = setInterval(checkEta, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [fallbackMode, alarm, triggered]);
+    const eta = new Date(alarm.expectedArrivalTime);
+    const correctedNow = new Date(now - offset);
+    setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
+    if (correctedNow >= eta) fireAlarm();
+  }, [now, fallbackMode, alarm, triggered]);
 
   const fireAlarm = async () => {
 
@@ -243,7 +244,7 @@ function GpsTest({ alarm, token, onCancel }) {
     playAlarmSound();
     showAlarmNotification(alarm.triggerStation || alarm.destinationStation);
     navigator.geolocation.clearWatch(watchIdRef.current);
-    wakeLockRef.current?.release().catch(() => {});
+    wakeLockRef.current?.release().catch(() => { });
     try {
       await fetch(`${API_BASE_URL}/api/alarms/${alarm._id}`, {
         method: 'PATCH',
@@ -285,7 +286,9 @@ function GpsTest({ alarm, token, onCancel }) {
   if (fallbackMode && alarm.startTime && alarm.expectedArrivalTime) {
     const start = new Date(alarm.startTime).getTime();
     const end = new Date(alarm.expectedArrivalTime).getTime();
-    const now = Date.now();
+    // const now = Date.now();
+    // progress = end > start ? (now - start) / (end - start) : 0;
+    // NEW
     progress = end > start ? (now - start) / (end - start) : 0;
   } else if (!fallbackMode && distance != null) {
     const initial = initialDistanceRef.current || distance || 1;
@@ -332,11 +335,10 @@ function GpsTest({ alarm, token, onCancel }) {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <span
-              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full mb-2 ${
-                fallbackMode
-                  ? 'bg-time-from/10 text-time-from border border-time-from/25'
-                  : 'bg-gps-from/10 text-gps-to border border-gps-from/25'
-              }`}
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full mb-2 ${fallbackMode
+                ? 'bg-time-from/10 text-time-from border border-time-from/25'
+                : 'bg-gps-from/10 text-gps-to border border-gps-from/25'
+                }`}
             >
               {fallbackMode ? <Clock3 className="w-3 h-3" /> : <Radar className="w-3 h-3" />}
               {fallbackMode ? 'Time-fallback tracking' : 'Live GPS tracking'}
@@ -348,9 +350,8 @@ function GpsTest({ alarm, token, onCancel }) {
           <motion.span
             animate={{ scale: [1, 1.15, 1] }}
             transition={{ repeat: Infinity, duration: 2 }}
-            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-              fallbackMode ? 'bg-gradient-time shadow-glow-time' : 'bg-gradient-gps shadow-glow'
-            }`}
+            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${fallbackMode ? 'bg-gradient-time shadow-glow-time' : 'bg-gradient-gps shadow-glow'
+              }`}
           >
             <TrainFront className="w-5 h-5 text-white" />
           </motion.span>
@@ -366,12 +367,12 @@ function GpsTest({ alarm, token, onCancel }) {
               value={
                 fallbackMode
                   ? new Date(alarm.expectedArrivalTime).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
                   : distance != null
-                  ? `${Math.round(distance)} m`
-                  : '—'
+                    ? `${Math.round(distance)} m`
+                    : '—'
               }
               icon={fallbackMode ? Clock3 : Radar}
             />
