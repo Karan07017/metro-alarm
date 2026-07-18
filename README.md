@@ -2,12 +2,12 @@
 
 **A hybrid GPS + time-based alarm system that wakes commuters up one station before their destination — built to solve the real problem of GPS signal loss in underground metro tunnels.**
 
-![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
-![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/Express.js-5-000000?style=flat-square&logo=express&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)
+![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)
+![Node.js](https://img.shields.io/badge/Node.js-18+-20232A?logo=node.js&logoColor=339933)
+![Express](https://img.shields.io/badge/Express.js-5-20232A?logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-20232A?logo=mongodb&logoColor=47A248)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-20232A?logo=tailwindcss&logoColor=38BDF8)
+![Vite](https://img.shields.io/badge/Vite-8-20232A?logo=vite&logoColor=646CFF)
 
 ---
 
