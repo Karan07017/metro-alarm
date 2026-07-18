@@ -21,6 +21,8 @@ Anyone who's dozed off on a metro and missed their stop knows the problem: locat
 
 The alarm is intentionally set to ring **one station before** the actual destination — giving the rider a full stop's worth of time to get ready to get off.
 
+> **Note:** The app is currently operational for the **Yellow Line** only (Samaypur Badli ↔ Millennium City Centre Gurugram).
+
 ---
 
 ## ✨ Features
@@ -122,7 +124,7 @@ metro-alarm/
 │   │   └── stationRoutes.js
 │   ├── middleware/authMiddleware.js   # JWT verification
 │   ├── utils/calculateTravelTime.js   # Trigger station + ETA math
-│   ├── seed/                          # Station & travel-time seed scripts (Delhi Metro Red & Yellow lines)
+│   ├── seed/                          # Station & travel-time seed scripts (Yellow Line only — currently active)
 │   ├── server.js                      # App entry point
 │   └── .env.example
 │
@@ -237,20 +239,11 @@ If GPS mode was selected but a location error is detected mid-journey, the app *
 
 ---
 
-## 🖼️ Screenshots / Demo
-
-> _Add screenshots or a GIF walkthrough here._
-
-| Login | Mode Select | Live Tracking | History |
-|---|---|---|---|
-| ![login](docs/screenshots/login.png) | ![mode-select](docs/screenshots/mode-select.png) | ![tracking](docs/screenshots/tracking.png) | ![history](docs/screenshots/history.png) |
-
----
-
 ## 🚧 Future Improvements
 
+- Wire up the existing Red Line station data into the seed scripts to make it operational
 - Cross-line routing / interchange support (currently limited to same-line journeys)
-- Support for additional metro lines beyond Red and Yellow
+- Support for additional metro lines beyond Yellow (and Red, once seeded)
 - Push notifications via a service worker for true background delivery
 - Password reset / email verification flow
 - Unit and integration test coverage
@@ -267,11 +260,21 @@ If GPS mode was selected but a location error is detected mid-journey, the app *
 ## 👤 Author
 
 **Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
-- LinkedIn: [your-linkedin](https://linkedin.com/in/your-linkedin)
+- GitHub: [@Karan07017](https://github.com/Karan07017)
+- LinkedIn: [Karan Arya](https://www.linkedin.com/in/karan-arya1797/)
 
 ---
 
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+
+---
+
+<div align="center">
+
+### ☕ Made with sleepless nights, endless debugging, and way too much caffeine.
+
+**Crafted by Karan Arya ❤️**
+
+</div>
