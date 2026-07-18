@@ -95,6 +95,11 @@ function GpsTest({ alarm, token, onCancel }) {
   const watchIdRef = useRef(null);
   const wakeLockRef = useRef(null);
   const initialDistanceRef = useRef(null);
+   // Offset between this device's clock and the server's clock, captured
+  // once from the server-issued startTime. Neutralizes any client/server
+  // clock disagreement so the countdown always respects the backend's
+  // computed duration, instead of comparing two different clocks directly.
+  const clockOffsetRef = useRef(null);
 
   // Screen ko awake rakhta hai jab tak alarm active hai — isse mobile browser
   // ke tab ko suspend karne ka chance kaafi kam ho jaata hai. Poori tarah se
@@ -191,20 +196,44 @@ function GpsTest({ alarm, token, onCancel }) {
   // Time-fallback ka apna check — GPS position update hone ka wait nahi karta,
   // kyunki fallback mode mein watchPosition se naye updates aana hi band ho jaate hain.
   // Isliye har 5 second mein khud poll karke check karta hai ki ETA nikal gaya ya nahi.
+  // useEffect(() => {
+  //   if (!fallbackMode || !alarm || triggered) return;
+
+  //   const checkEta = () => {
+  //     const eta = new Date(alarm.expectedArrivalTime);
+  //     setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
+  //     if (new Date() >= eta) fireAlarm();
+  //   };
+
+  //   checkEta(); // turant ek baar check karo
+  //   const intervalId = setInterval(checkEta, 5000);
+
+  //   return () => clearInterval(intervalId);
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [fallbackMode, alarm, triggered]);
+
+  // NEW
   useEffect(() => {
     if (!fallbackMode || !alarm || triggered) return;
 
+    if (clockOffsetRef.current == null && alarm.startTime) {
+      // How far ahead/behind this device's clock is vs. the server's,
+      // measured once against the server-issued startTime.
+      clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
+    }
+    const offset = clockOffsetRef.current || 0;
+
     const checkEta = () => {
       const eta = new Date(alarm.expectedArrivalTime);
+      const correctedNow = new Date(Date.now() - offset);
       setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
-      if (new Date() >= eta) fireAlarm();
+      if (correctedNow >= eta) fireAlarm();
     };
 
     checkEta(); // turant ek baar check karo
     const intervalId = setInterval(checkEta, 5000);
 
     return () => clearInterval(intervalId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fallbackMode, alarm, triggered]);
 
   const fireAlarm = async () => {
