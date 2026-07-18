@@ -267,7 +267,7 @@ If GPS mode was selected but a location error is detected mid-journey, the app *
 
 ## 👤 Author
 
-**Your Name**
+**Karan Arya**
 - GitHub: [@Karan07017](https://github.com/Karan07017)
 - LinkedIn: [Karan Arya](https://www.linkedin.com/in/karan-arya1797/)
 
