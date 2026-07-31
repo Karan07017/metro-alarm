@@ -26,6 +26,17 @@ function AppShell() {
       return null;
     }
   })();
+  const isGuest = Boolean(user?.isGuest);
+
+  // Guests can only reach Metro Alarm — History/Settings/Profile/Account
+  // are off-limits, so any attempt to navigate there bounces back to home.
+  const navigate = (target) => {
+    if (isGuest && (target === 'history' || target === 'settings')) {
+      setPage('home');
+      return;
+    }
+    setPage(target);
+  };
 
   useEffect(() => {
     if (!token) {
@@ -100,9 +111,9 @@ function AppShell() {
   }
 
   const content =
-    page === 'history' ? (
+    page === 'history' && !isGuest ? (
       <HistoryPage token={token} />
-    ) : page === 'settings' ? (
+    ) : page === 'settings' && !isGuest ? (
       // <SettingsPage user={user} alarm={alarm} onLogout={handleLogout} />
       // NEW
       <SettingsPage
@@ -115,6 +126,8 @@ function AppShell() {
       homeContent
     );
 
+  const effectivePage = isGuest && (page === 'history' || page === 'settings') ? 'home' : page;
+
   return (
     <Layout
       navbar={
@@ -125,18 +138,19 @@ function AppShell() {
         //   showNav
         // />
         <Navbar
-          page={page}
+          page={effectivePage}
+          isGuest={isGuest}
           onNavigate={(target) => {
             if (target === "mode-selection") {
               setAlarm(null);
               setSelectedMode(null);
-              setPage("home");
+              navigate("home");
               return;
             }
 
-            setPage(target);
+            navigate(target);
           }}
-          onLogout={page === "settings" ? undefined : handleLogout}
+          onLogout={effectivePage === "settings" ? undefined : handleLogout}
           showNav
         />
       }

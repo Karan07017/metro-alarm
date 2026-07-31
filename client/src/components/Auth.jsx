@@ -15,6 +15,30 @@ function Auth({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
+
+  const handleGuestLogin = async () => {
+    setGuestLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not start guest session');
+
+      // No Mongo user, no persisted profile — only the token and a local
+      // isGuest flag so the rest of the app knows to restrict navigation.
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify({ _id: data._id, name: data.name, isGuest: true }));
+      onLogin(data.token);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGuestLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -177,6 +201,23 @@ function Auth({ onLogin }) {
                 {mode === 'login' ? 'Log in' : 'Create account'}
               </Button>
             </form>
+
+            <div className="flex items-center gap-3 my-5">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-faint">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              loading={guestLoading}
+              onClick={handleGuestLogin}
+              className="w-full"
+              size="lg"
+            >
+              Continue as Guest
+            </Button>
 
             <p className="text-sm text-muted text-center mt-6">
               {mode === 'login' ? "Don't have an account? " : 'Already registered? '}

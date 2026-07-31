@@ -1,12 +1,16 @@
 import { motion } from 'framer-motion';
 import { TrainFront, History, Settings, LogOut } from 'lucide-react';
 
-export default function Navbar({ page, onNavigate, onLogout, showNav }) {
-  const items = [
-    { key: 'home', label: 'Alarm', icon: TrainFront },
-    { key: 'history', label: 'History', icon: History },
-    { key: 'settings', label: 'Settings', icon: Settings },
-  ];
+export default function Navbar({ page, onNavigate, onLogout, showNav, isGuest }) {
+  // Guests only ever see Metro Alarm + Logout — no History/Settings tabs,
+  // since those routes are off-limits for guest sessions.
+  const items = isGuest
+    ? [{ key: 'home', label: 'Alarm', icon: TrainFront }]
+    : [
+        { key: 'home', label: 'Alarm', icon: TrainFront },
+        { key: 'history', label: 'History', icon: History },
+        { key: 'settings', label: 'Settings', icon: Settings },
+      ];
 
   return (
     <header className="sticky top-0 z-40">
