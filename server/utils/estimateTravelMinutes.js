@@ -7,7 +7,7 @@ const haversineDistanceKm = require('./haversineDistance');
  * commonly cited average for dense urban metro systems (e.g. Delhi
  * Metro's published average is in the ~32-35 km/h range).
  */
-const AVERAGE_SPEED_KMH = 35;
+const AVERAGE_SPEED_KMH = 40;
 
 /**
  * Fixed buffer per hop for station dwell time (doors open/close,
@@ -15,7 +15,7 @@ const AVERAGE_SPEED_KMH = 35;
  * distance/speed doesn't capture. Kept as a flat constant so the
  * model stays simple and fully deterministic.
  */
-const DWELL_MINUTES = 0.5;
+const DWELL_MINUTES = 0.33;
 
 /**
  * Minimum realistic travel time for any single hop, so that two
