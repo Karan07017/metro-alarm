@@ -9,11 +9,38 @@ connectDB();
 const app = express();
 
 
+// const allowedOrigins = process.env.CLIENT_URL
+//   ? process.env.CLIENT_URL.split(',').map((o) => o.trim())
+//   : '*';
+
+// app.use(cors({ origin: allowedOrigins }));
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map((o) => o.trim())
-  : '*';
+  : [];
 
-app.use(cors({ origin: allowedOrigins }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no Origin (Postman, mobile apps, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Explicitly allowed origins from env
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow all Vercel preview deployments
+      if (origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
