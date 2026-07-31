@@ -34,7 +34,8 @@ function getDistanceMeters(lat1, lon1, lat2, lon2) {
 async function playAlarmSound() {
   const ctx = getAudioContext();
 
-
+  // Backgrounded tab se wapas aane par context suspend ho sakta hai —
+  // fire karne se theek pehle ek aakhri baar resume try karo.
   if (ctx.state === 'suspended') {
     try {
       await ctx.resume();
@@ -59,7 +60,9 @@ async function playAlarmSound() {
   if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
 }
 
-
+// In-page sound sirf tab active/foreground hone par hi sunayi deta hai.
+// Native OS notification zyada reliable hai — browser process zinda hone
+// tak dikh sakta hai chahe tab background mein ho.
 function showAlarmNotification(stationName) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
@@ -83,7 +86,9 @@ function GpsTest({ alarm, token, onCancel }) {
   const [position, setPosition] = useState(null);
   const [status, setStatus] = useState('Waiting for GPS...');
   const [failCount, setFailCount] = useState(0);
-
+  // Time Based mode chosen upfront on the landing screen sets triggerMode
+  // to time-fallback immediately, so start in fallback mode right away
+  // instead of waiting for a GPS failure to be detected.
   const [fallbackMode, setFallbackMode] = useState(alarm.triggerMode === 'time-fallback');
   const [distance, setDistance] = useState(null);
   const [triggered, setTriggered] = useState(false);
@@ -91,7 +96,16 @@ function GpsTest({ alarm, token, onCancel }) {
   const watchIdRef = useRef(null);
   const wakeLockRef = useRef(null);
   const initialDistanceRef = useRef(null);
- 
+  // Offset between this device's clock and the server's clock, captured
+  // once from the server-issued startTime. Neutralizes any client/server
+  // clock disagreement so the countdown always respects the backend's
+  // computed duration, instead of comparing two different clocks directly.
+  // const clockOffsetRef = useRef(null);
+
+  // Screen ko awake rakhta hai jab tak alarm active hai — isse mobile browser
+  // ke tab ko suspend karne ka chance kaafi kam ho jaata hai. Poori tarah se
+  // guarantee nahi hai (OS phir bhi kabhi kabhi background tabs suspend kar
+  // sakta hai), par best-effort improvement hai.
   useEffect(() => {
     let released = false;
 
@@ -107,6 +121,8 @@ function GpsTest({ alarm, token, onCancel }) {
 
     requestWakeLock();
 
+    // Tab dobara visible hone par wake lock re-acquire karo — browser
+    // automatically release kar deta hai jab tab hidden hoti hai.
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !released) requestWakeLock();
     };
@@ -184,7 +200,42 @@ function GpsTest({ alarm, token, onCancel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, fallbackMode, alarm, triggered]);
 
-  
+  // NEW
+  // useEffect(() => {
+  //   if (!fallbackMode || !alarm || triggered) return;
+
+  //   if (clockOffsetRef.current == null && alarm.startTime) {
+  //     // How far ahead/behind this device's clock is vs. the server's,
+  //     // measured once against the server-issued startTime.
+  //     clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
+  //   }
+  //   const offset = clockOffsetRef.current || 0;
+
+  //   const checkEta = () => {
+  //     const eta = new Date(alarm.expectedArrivalTime);
+  //     const correctedNow = new Date(Date.now() - offset);
+  //     setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
+  //     if (correctedNow >= eta) fireAlarm();
+  //   };
+
+  //   checkEta(); // turant ek baar check karo
+  //   const intervalId = setInterval(checkEta, 5000);
+
+  //   return () => clearInterval(intervalId);
+  // }, [fallbackMode, alarm, triggered]);
+
+  // NEW
+  // useEffect(() => {
+  //   if (!fallbackMode || !alarm || triggered) return;
+  //   if (clockOffsetRef.current == null && alarm.startTime) {
+  //     clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
+  //   }
+  //   const offset = clockOffsetRef.current || 0;
+  //   const eta = new Date(alarm.expectedArrivalTime);
+  //   const correctedNow = new Date(now - offset);
+  //   setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
+  //   if (correctedNow >= eta) fireAlarm();
+  // }, [now, fallbackMode, alarm, triggered]);
   useEffect(() => {
     if (!fallbackMode || !alarm || triggered) return;
     const eta = new Date(alarm.expectedArrivalTime);
@@ -250,6 +301,20 @@ function GpsTest({ alarm, token, onCancel }) {
     progress = 1 - distance / initial;
   }
   progress = Math.min(1, Math.max(0, progress));
+
+  // Live ETA for GPS mode. Instantaneous device GPS speed is too noisy for
+  // this (tunnels, curves the straight-line Haversine distance doesn't
+  // capture, station dwell time), so instead of measuring speed directly
+  // we scale the already-computed average trip duration
+  // (alarm.durationMinutes — sourced from the real per-station-gap
+  // TravelTime data, see server/utils/calculateTravelTime.js) by how much
+  // of the original straight-line distance to the target is still left.
+  // This is the single place GPS-mode ETA is computed — no duplicate math
+  // elsewhere.
+  const gpsRemainingMinutes =
+    !fallbackMode && distance != null && initialDistanceRef.current
+      ? Math.max(0, (alarm.durationMinutes * distance) / initialDistanceRef.current)
+      : null;
 
   const signal = signalQuality(position?.accuracy);
   const SignalIcon = signal.icon;
@@ -326,7 +391,9 @@ function GpsTest({ alarm, token, onCancel }) {
                     minute: '2-digit',
                   })
                   : distance != null
-                    ? `${Math.round(distance)} m`
+                    ? `${Math.round(distance)} m${
+                        gpsRemainingMinutes != null ? ` · ~${Math.round(gpsRemainingMinutes)} min` : ''
+                      }`
                     : '—'
               }
               icon={fallbackMode ? Clock3 : Radar}
