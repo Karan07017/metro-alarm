@@ -10,6 +10,7 @@ import {
   Star,
   History as HistoryIcon,
   TrainFront,
+  RefreshCcw,
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import Input from './ui/Input';
@@ -189,7 +190,7 @@ function StationRow({ station, onClick }) {
   );
 }
 
-function AlarmSetup({ token, mode = 'gps', onAlarmCreated }) {
+function AlarmSetup({ token, mode = 'gps', onAlarmCreated, onChangeMode }) {
   const [stations, setStations] = useState([]);
   const [loadingStations, setLoadingStations] = useState(true);
   const [fromId, setFromId] = useState('');
@@ -284,15 +285,28 @@ function AlarmSetup({ token, mode = 'gps', onAlarmCreated }) {
     <Container size="sm" className="py-10 sm:py-16">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="mb-7">
-          <span
-            className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full mb-3 ${mode === 'time'
-              ? 'bg-time-from/10 text-time-from border border-time-from/25'
-              : 'bg-gps-from/10 text-gps-to border border-gps-from/25'
-              }`}
-          >
-            <Clock3 className="w-3 h-3" />
-            {mode === 'time' ? 'Time Based mode' : 'GPS Based mode'}
-          </span>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${mode === 'time'
+                ? 'bg-time-from/10 text-time-from border border-time-from/25'
+                : 'bg-gps-from/10 text-gps-to border border-gps-from/25'
+                }`}
+            >
+              <Clock3 className="w-3 h-3" />
+              {mode === 'time' ? 'Time Based mode' : 'GPS Based mode'}
+            </span>
+
+            {onChangeMode && (
+              <button
+                type="button"
+                onClick={onChangeMode}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted hover:text-text transition-colors px-2.5 py-1 rounded-full hover:bg-white/5"
+              >
+                <RefreshCcw className="w-3 h-3" />
+                Change Mode
+              </button>
+            )}
+          </div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">Set your alarm</h1>
           <p className="text-muted text-sm mt-1">Pick where you're getting on and off.</p>
         </div>
