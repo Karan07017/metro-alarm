@@ -165,6 +165,22 @@ function GpsTest({ alarm, token, onCancel }) {
     if (failCount >= 1) setFallbackMode(true);
   }, [failCount]);
 
+  // Capture the device/server clock offset as soon as the journey's
+  // startTime is known (i.e. right when this screen mounts after Start
+  // Journey), NOT when GPS later fails and fallback mode kicks in. If this
+  // were deferred until the fallback switch, Date.now() - startTime would
+  // equal however long GPS mode had already been running (minutes), not a
+  // small clock-drift value — which snapped serverNow back to startTime on
+  // every fallback switch (animation "restarting" at 0%) and pushed the
+  // alarm's real-world fire time later by that same already-elapsed amount
+  // (late alarm). Capturing it here keeps the offset a true, small clock
+  // skew so elapsed-time math stays correct no matter when GPS fails.
+  useEffect(() => {
+    if (clockOffsetRef.current == null && alarm.startTime) {
+      clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
+    }
+  }, [alarm.startTime]);
+
   const modeSyncedRef = useRef(alarm.triggerMode === 'time-fallback');
 
   useEffect(() => {
@@ -204,13 +220,10 @@ function GpsTest({ alarm, token, onCancel }) {
   useEffect(() => {
     if (!fallbackMode || !alarm || triggered) return;
 
-    if (clockOffsetRef.current == null && alarm.startTime) {
-      // How far ahead/behind this device's clock is vs. the server's,
-      // measured once against the server-issued startTime. Reused for
-      // every subsequent comparison instead of trusting the device clock
-      // directly, so the countdown/animation/trigger stay in lockstep.
-      clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
-    }
+    // Offset is captured once, up front (see the effect right after the
+    // failCount watcher above) — reused here for every comparison instead
+    // of trusting the device clock directly, so the countdown/animation/
+    // trigger stay in lockstep with the server-issued startTime/ETA.
     const offset = clockOffsetRef.current || 0;
     const eta = new Date(alarm.expectedArrivalTime);
     const serverNow = new Date(now - offset);
