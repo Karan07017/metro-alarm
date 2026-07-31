@@ -102,6 +102,15 @@ function GpsTest({ alarm, token, onCancel }) {
   // trigger always respect the backend's computed duration, instead of
   // comparing two different clocks directly.
   const clockOffsetRef = useRef(null);
+  // One-time snapshot of {start, end} (ms, server-time domain) captured
+  // ONLY when GPS mode hands off to Time Fallback mode after having real
+  // GPS progress — never used for a journey that starts directly in
+  // Time Fallback mode. See the transition-capture effect below.
+  const [transitionSync, setTransitionSync] = useState(null);
+  const transitionSyncedRef = useRef(false);
+  // Flips true only once this session has shown real GPS-derived progress
+  // (i.e. we were genuinely in GPS mode, not started directly in fallback).
+  const gpsWasActiveRef = useRef(false);
 
   // Screen ko awake rakhta hai jab tak alarm active hai — isse mobile browser
   // ke tab ko suspend karne ka chance kaafi kam ho jaata hai. Poori tarah se
@@ -164,6 +173,61 @@ function GpsTest({ alarm, token, onCancel }) {
   useEffect(() => {
     if (failCount >= 1) setFallbackMode(true);
   }, [failCount]);
+
+  // Remember that this session genuinely had live GPS progress at some
+  // point, so the transition-capture effect below can tell "GPS handed off
+  // to fallback mid-journey" apart from "journey started directly in
+  // Time Fallback mode" (which never sets `distance`, see the GPS
+  // trigger-detection effect further down — it's gated on `!fallbackMode`).
+  useEffect(() => {
+    if (!fallbackMode && distance != null) {
+      gpsWasActiveRef.current = true;
+    }
+  }, [fallbackMode, distance]);
+
+  // Fires exactly once: the moment GPS mode hands off to Time Fallback mode
+  // after real GPS progress existed. Captures the GPS-derived progress and
+  // remaining time at that instant, and turns them into an effective
+  // {start, end} pair that reproduces that same progress/remaining-time
+  // right now. Time Fallback's own progress/ETA/trigger math (further
+  // below) is completely unchanged — it still just does
+  // (serverNow - start) / (end - start) and `serverNow >= eta` — this only
+  // supplies which start/end it uses, and only for a journey that actually
+  // transitioned from GPS. A journey that starts directly in Time Fallback
+  // mode never sets gpsWasActiveRef, so transitionSync stays null and that
+  // mode's behaviour is untouched.
+  useEffect(() => {
+    if (
+      transitionSyncedRef.current ||
+      !fallbackMode ||
+      !gpsWasActiveRef.current ||
+      distance == null ||
+      !initialDistanceRef.current
+    ) {
+      return;
+    }
+    transitionSyncedRef.current = true;
+
+    const offset = clockOffsetRef.current || 0;
+    const t0 = now - offset; // "server now" at the moment of transition
+
+    // Same formulas already used elsewhere for GPS-mode progress/ETA (see
+    // the presentation-only progress calc and gpsRemainingMinutes further
+    // down) — reused here, not reinvented, just evaluated once at the
+    // transition instant instead of every render.
+    const capturedProgress = Math.min(0.999, Math.max(0, 1 - distance / initialDistanceRef.current));
+    const capturedRemainingMinutes = Math.max(
+      0,
+      (alarm.durationMinutes * distance) / initialDistanceRef.current
+    );
+    const end = t0 + capturedRemainingMinutes * 60000;
+    // Solve (t0 - start) / (end - start) = capturedProgress for start, so
+    // that plugging {start, end} into the unchanged fallback formula
+    // reproduces exactly the captured progress at t0.
+    const start = (t0 - capturedProgress * end) / (1 - capturedProgress);
+
+    setTransitionSync({ start, end });
+  }, [fallbackMode, distance, now, alarm.durationMinutes]);
 
   // Seed the progress baseline from the journey's TRUE origin, not from
   // whichever GPS fix happens to arrive first. The origin's coords were
@@ -259,12 +323,12 @@ function GpsTest({ alarm, token, onCancel }) {
     // of trusting the device clock directly, so the countdown/animation/
     // trigger stay in lockstep with the server-issued startTime/ETA.
     const offset = clockOffsetRef.current || 0;
-    const eta = new Date(alarm.expectedArrivalTime);
+    const eta = transitionSync ? new Date(transitionSync.end) : new Date(alarm.expectedArrivalTime);
     const serverNow = new Date(now - offset);
 
     setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
     if (serverNow >= eta) fireAlarm();
-  }, [now, fallbackMode, alarm, triggered]);
+  }, [now, fallbackMode, alarm, triggered, transitionSync]);
 
   const fireAlarm = async () => {
 
@@ -323,8 +387,8 @@ function GpsTest({ alarm, token, onCancel }) {
 
   let progress = 0;
   if (fallbackMode && alarm.startTime && alarm.expectedArrivalTime) {
-    const start = new Date(alarm.startTime).getTime();
-    const end = new Date(alarm.expectedArrivalTime).getTime();
+    const start = transitionSync ? transitionSync.start : new Date(alarm.startTime).getTime();
+    const end = transitionSync ? transitionSync.end : new Date(alarm.expectedArrivalTime).getTime();
     const offset = clockOffsetRef.current || 0;
     const serverNow = now - offset;
     progress = end > start ? (serverNow - start) / (end - start) : 0;
@@ -418,7 +482,9 @@ function GpsTest({ alarm, token, onCancel }) {
               label={fallbackMode ? 'ETA' : 'Distance'}
               value={
                 fallbackMode
-                  ? new Date(alarm.expectedArrivalTime).toLocaleTimeString([], {
+                  ? new Date(
+                      transitionSync ? transitionSync.end : alarm.expectedArrivalTime
+                    ).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                   })
