@@ -98,9 +98,10 @@ function GpsTest({ alarm, token, onCancel }) {
   const initialDistanceRef = useRef(null);
   // Offset between this device's clock and the server's clock, captured
   // once from the server-issued startTime. Neutralizes any client/server
-  // clock disagreement so the countdown always respects the backend's
-  // computed duration, instead of comparing two different clocks directly.
-  // const clockOffsetRef = useRef(null);
+  // clock disagreement so the countdown, progress animation, and alarm
+  // trigger always respect the backend's computed duration, instead of
+  // comparing two different clocks directly.
+  const clockOffsetRef = useRef(null);
 
   // Screen ko awake rakhta hai jab tak alarm active hai — isse mobile browser
   // ke tab ko suspend karne ka chance kaafi kam ho jaata hai. Poori tarah se
@@ -200,47 +201,22 @@ function GpsTest({ alarm, token, onCancel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, fallbackMode, alarm, triggered]);
 
-  // NEW
-  // useEffect(() => {
-  //   if (!fallbackMode || !alarm || triggered) return;
-
-  //   if (clockOffsetRef.current == null && alarm.startTime) {
-  //     // How far ahead/behind this device's clock is vs. the server's,
-  //     // measured once against the server-issued startTime.
-  //     clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
-  //   }
-  //   const offset = clockOffsetRef.current || 0;
-
-  //   const checkEta = () => {
-  //     const eta = new Date(alarm.expectedArrivalTime);
-  //     const correctedNow = new Date(Date.now() - offset);
-  //     setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
-  //     if (correctedNow >= eta) fireAlarm();
-  //   };
-
-  //   checkEta(); // turant ek baar check karo
-  //   const intervalId = setInterval(checkEta, 5000);
-
-  //   return () => clearInterval(intervalId);
-  // }, [fallbackMode, alarm, triggered]);
-
-  // NEW
-  // useEffect(() => {
-  //   if (!fallbackMode || !alarm || triggered) return;
-  //   if (clockOffsetRef.current == null && alarm.startTime) {
-  //     clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
-  //   }
-  //   const offset = clockOffsetRef.current || 0;
-  //   const eta = new Date(alarm.expectedArrivalTime);
-  //   const correctedNow = new Date(now - offset);
-  //   setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
-  //   if (correctedNow >= eta) fireAlarm();
-  // }, [now, fallbackMode, alarm, triggered]);
   useEffect(() => {
     if (!fallbackMode || !alarm || triggered) return;
+
+    if (clockOffsetRef.current == null && alarm.startTime) {
+      // How far ahead/behind this device's clock is vs. the server's,
+      // measured once against the server-issued startTime. Reused for
+      // every subsequent comparison instead of trusting the device clock
+      // directly, so the countdown/animation/trigger stay in lockstep.
+      clockOffsetRef.current = Date.now() - new Date(alarm.startTime).getTime();
+    }
+    const offset = clockOffsetRef.current || 0;
     const eta = new Date(alarm.expectedArrivalTime);
+    const serverNow = new Date(now - offset);
+
     setStatus(`Time-fallback mode — ETA ${eta.toLocaleTimeString()}`);
-    if (new Date(now) >= eta) fireAlarm();
+    if (serverNow >= eta) fireAlarm();
   }, [now, fallbackMode, alarm, triggered]);
 
   const fireAlarm = async () => {
@@ -292,10 +268,9 @@ function GpsTest({ alarm, token, onCancel }) {
   if (fallbackMode && alarm.startTime && alarm.expectedArrivalTime) {
     const start = new Date(alarm.startTime).getTime();
     const end = new Date(alarm.expectedArrivalTime).getTime();
-    // const now = Date.now();
-    // progress = end > start ? (now - start) / (end - start) : 0;
-    // NEW
-    progress = end > start ? (now - start) / (end - start) : 0;
+    const offset = clockOffsetRef.current || 0;
+    const serverNow = now - offset;
+    progress = end > start ? (serverNow - start) / (end - start) : 0;
   } else if (!fallbackMode && distance != null) {
     const initial = initialDistanceRef.current || distance || 1;
     progress = 1 - distance / initial;
