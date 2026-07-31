@@ -8,35 +8,37 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-20232A?logo=mongodb&logoColor=47A248)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-20232A?logo=tailwindcss&logoColor=38BDF8)
 ![Vite](https://img.shields.io/badge/Vite-8-20232A?logo=vite&logoColor=646CFF)
+![License](https://img.shields.io/badge/License-MIT-20232A)
 
 ---
 
 ## 📖 About
 
-Anyone who's dozed off on a metro and missed their stop knows the problem: location-tracking apps rely on GPS, and GPS is unreliable (or completely dead) underground. **Metro Alarm** solves this with a **hybrid alerting engine**:
+Anyone who's dozed off on the metro and missed their stop knows the problem: location apps rely on GPS, and GPS is unreliable — or completely dead — underground. **Metro Alarm** solves this with a **hybrid alerting engine**:
 
-- When GPS signal is available, the app tracks your live location and fires the alarm when you're within a configurable distance of your trigger station.
-- When GPS fails (tunnels, weak signal, or the user explicitly picks "Time Based" mode), the app automatically falls back to a **server-calculated ETA timer**, so the alarm still fires reliably based on expected travel time.
+- When GPS signal is available, the app tracks your live location and fires the alarm once you're within a configurable distance of your trigger station.
+- When GPS fails (tunnels, weak signal) — or the user manually picks **Time Based** mode — the app falls back to a **server-calculated ETA timer**, so the alarm still fires reliably based on expected travel time.
 
-The alarm is intentionally set to ring **one station before** the actual destination — giving the rider a full stop's worth of time to get ready to get off.
+The alarm is intentionally fired **one station before** the actual destination, giving the rider a full stop's worth of time to get ready to get off.
 
-> **Note:** The app is currently operational for the **Yellow Line** only (Samaypur Badli ↔ Millennium City Centre Gurugram).
+> **Note:** The app is currently operational for the **Yellow Line** only (Samaypur Badli ↔ Millennium City Centre Gurugram). Seed data exists for the Yellow Line's station order and per-gap travel times.
 
 ---
 
 ## ✨ Features
 
-- 🔐 **User authentication** — register/login with JWT-based sessions, passwords hashed with bcrypt
-- 🚉 **Station search & selection** — searchable "from" / "to" station pickers with recent-station memory (via `localStorage`)
+- 🔐 **User authentication** — register/login with JWT-based sessions, passwords hashed with `bcryptjs`
+- 👤 **Guest mode** — a "Continue as Guest" flow issues a short-lived, credential-free JWT so users can try the app without registering (guests are restricted from History/Settings pages)
+- 🚉 **Station search & selection** — searchable "from" / "to" station pickers with recent-station memory via `localStorage`
 - 🔀 **Two alarm modes** — GPS Based and Time Based, selectable up front from a mode-selection screen
 - 📍 **Live GPS tracking** — continuous `watchPosition` tracking with real-time distance-to-station calculation (Haversine formula)
-- ⏱️ **Automatic GPS → Time fallback** — if GPS errors out, the app auto-switches to time-based tracking and syncs the change to the backend
-- 🧮 **Server-side travel time calculation** — trigger station and ETA computed from seeded station order/line data
-- 🔔 **Multi-channel alarm firing** — Web Audio API beeps, device vibration (Vibration API), and native browser notifications (Web Notifications API)
-- 🔋 **Screen Wake Lock** — keeps the screen awake while an alarm is active to reduce the chance of the tab being suspended
-- 📜 **Alarm history** — past alarms grouped by day with status (pending / active / triggered / cancelled)
+- ⏱️ **Automatic GPS → Time fallback** — if GPS errors out mid-journey, the app auto-switches to time-based tracking and syncs the mode change back to the backend
+- 🧮 **Server-side travel time calculation** — trigger station and ETA computed from seeded station order and average per-gap travel time
+- 🔔 **Multi-channel alarm firing** — Web Audio API tones, device vibration (Vibration API), and native browser notifications (Web Notifications API)
+- 🔋 **Screen Wake Lock** — keeps the screen awake while an alarm is active, re-acquired automatically if the tab regains visibility
+- 📜 **Alarm history** — past alarms grouped by day with status (`pending` / `active` / `triggered` / `cancelled`)
 - ⚙️ **Settings page** — view profile info and current alarm mode, resume an active alarm, or log out
-- 🔁 **Alarm persistence/restore** — on reload, the app re-fetches any pending/active alarm for the logged-in user and resumes tracking
+- 🔁 **Alarm persistence & restore** — on reload, the app re-fetches any pending/active alarm for the logged-in user and resumes tracking from where it left off
 - 🍞 **Toast notifications & loading states** — for a polished, app-like UX across the client
 
 ---
@@ -57,26 +59,26 @@ The alarm is intentionally set to ring **one station before** the actual destina
 ## 🏗️ Project Architecture / Working
 
 ```
-┌─────────────────┐        REST API (JSON, JWT)       ┌──────────────────┐
-│   React Client   │ ─────────────────────────────────▶ │  Express Server   │
-│  (Vite + Tailwind)│ ◀───────────────────────────────── │                  │
-└─────────────────┘                                     └────────┬─────────┘
-        │                                                        │
-        │ Geolocation / Notification /                           │ Mongoose
-        │ Web Audio / Vibration / Wake Lock                      ▼
-        ▼                                                ┌──────────────────┐
-   Device Browser APIs                                    │  MongoDB Atlas   │
-                                                            │ Users / Stations │
-                                                            │ Alarms/TravelTime│
-                                                            └──────────────────┘
+┌───────────────────┐        REST API (JSON, JWT)         ┌───────────────────┐
+│    React Client    │ ───────────────────────────────────▶│   Express Server   │
+│  (Vite + Tailwind)  │◀─────────────────────────────────── │                    │
+└───────────────────┘                                       └─────────┬─────────┘
+        │                                                             │
+        │ Geolocation / Notifications /                              │ Mongoose
+        │ Web Audio / Vibration / Wake Lock                           ▼
+        ▼                                                    ┌───────────────────┐
+   Device Browser APIs                                        │   MongoDB Atlas   │
+                                                                │ Users / Stations  │
+                                                                │ Alarms/TravelTime │
+                                                                └───────────────────┘
 ```
 
 **Flow summary:**
-1. User authenticates → JWT stored in `localStorage`.
+1. User authenticates (or continues as guest) → JWT stored in `localStorage`.
 2. User picks a mode (GPS or Time Based) and selects `from` / `to` stations.
-3. Backend calculates the **trigger station** (one stop before destination), the **trigger distance**, and the **expected duration** using seeded station order + average per-gap travel time.
+3. Backend calculates the **trigger station** (one stop before the destination), the **trigger distance**, and the **expected duration**, using seeded station order and average per-gap travel time.
 4. When the user starts the journey, the server stamps `startTime` and computes `expectedArrivalTime`.
-5. On the client, `GpsTest.jsx` either:
+5. On the client, the live-tracking screen either:
    - watches live GPS position and compares distance to the trigger station's coordinates, **or**
    - counts down to `expectedArrivalTime` if GPS fails or Time Based mode was selected.
 6. When the condition is met, the alarm fires (sound + vibration + notification) and the alarm's status is updated to `triggered` on the backend.
@@ -90,7 +92,7 @@ metro-alarm/
 ├── client/                        # React frontend (Vite)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── Auth.jsx           # Login / Register
+│   │   │   ├── Auth.jsx           # Login / Register / Guest login
 │   │   │   ├── AlarmSetup.jsx     # Station selection & alarm creation
 │   │   │   ├── StartJourney.jsx   # Start/confirm screen before tracking begins
 │   │   │   ├── GpsTest.jsx        # Live tracking screen (GPS + time-fallback logic)
@@ -108,7 +110,7 @@ metro-alarm/
 │
 ├── server/                        # Express backend
 │   ├── controllers/
-│   │   ├── authController.js      # register / login
+│   │   ├── authController.js      # register / login / guest login
 │   │   ├── alarmController.js     # create / start / update / list alarms
 │   │   ├── stationController.js   # list stations
 │   │   └── db.js                  # MongoDB connection
@@ -121,9 +123,12 @@ metro-alarm/
 │   │   ├── authRoutes.js
 │   │   ├── alarmRoutes.js
 │   │   └── stationRoutes.js
-│   ├── middleware/authMiddleware.js   # JWT verification
-│   ├── utils/calculateTravelTime.js   # Trigger station + ETA math
-│   ├── seed/                          # Station & travel-time seed scripts (Yellow Line only — currently active)
+│   ├── middleware/authMiddleware.js   # JWT verification (supports guest tokens)
+│   ├── utils/
+│   │   ├── calculateTravelTime.js     # Trigger station + ETA math
+│   │   ├── estimateTravelMinutes.js
+│   │   └── haversineDistance.js
+│   ├── seed/                          # Station & travel-time seed scripts (Yellow Line — active)
 │   ├── server.js                      # App entry point
 │   └── .env.example
 │
@@ -206,12 +211,13 @@ The client will be available at `http://localhost:5173` and will talk to the API
 
 ## 🔌 API Endpoints
 
-All `/api/alarms` routes require a `Bearer` JWT token in the `Authorization` header.
+All `/api/alarms` routes require a `Bearer` JWT token in the `Authorization` header (real user **or** guest token).
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/auth/register` | Create a new user account |
 | `POST` | `/api/auth/login` | Log in and receive a JWT |
+| `POST` | `/api/auth/guest` | Start a guest session (no credentials, short-lived JWT) |
 | `GET` | `/api/stations` | List all metro stations (sorted by line order) |
 | `POST` | `/api/alarms` | Create a new alarm (calculates trigger station & ETA) |
 | `GET` | `/api/alarms` | Get all alarms for the logged-in user |
@@ -223,45 +229,51 @@ All `/api/alarms` routes require a `Bearer` JWT token in the `Authorization` hea
 
 ## 🔄 Application Flow
 
-### GPS Mode
+### 📍 GPS Mode
 1. On starting the journey, the client begins `navigator.geolocation.watchPosition`.
 2. Every position update calculates the Haversine distance between the device and the **trigger station's coordinates**.
 3. When the distance drops to or below `triggerDistance` (default `500`m), the alarm fires.
 
-### Time Fallback Mode
+### ⏱️ Time Fallback Mode
 Triggered automatically if a GPS error occurs, or manually if the user selects **Time Based** mode up front. In this mode:
 1. The client ignores live position and instead compares the current time against the server-issued `expectedArrivalTime`.
 2. A 1-second interval re-checks the countdown and updates the displayed ETA.
 3. When the current time reaches `expectedArrivalTime`, the alarm fires — the same way it does in GPS mode (sound, vibration, notification).
 
-If GPS mode was selected but a location error is detected mid-journey, the app **automatically switches to time-fallback** and syncs the new `triggerMode` back to the server, so the fallback survives a page reload.
+If GPS mode was selected but a location error is detected mid-journey, the app **automatically switches to time-fallback** and syncs the new `triggerMode` back to the server, so the fallback persists across a page reload.
 
 ---
 
 ## ⚠️ Known Limitations
 
-- **No reliable background execution.** If the browser tab is minimized, switched away from, or the screen is locked, browsers throttle or fully suspend JS execution (timers, `watchPosition`, `AudioContext`). This means the alarm can fire **late or not at all** while the app is backgrounded — most noticeable on mobile browsers, less severe but still possible on desktop.
-- The **Screen Wake Lock** only keeps the screen on while the tab is active/foregrounded; it does not keep the app running once the tab itself goes to the background, and it is auto-released by the browser when the tab is hidden.
-- Native **Notifications** may still appear for a short while after backgrounding (as long as the browser process is alive), but this isn't guaranteed — the OS can kill the background browser process at any time.
-- A proper fix requires a **service worker with Push API** for true OS-level background delivery (see Future Improvements).
+- **No reliable background execution.** Browsers throttle or suspend JS (timers, `watchPosition`, `AudioContext`) when the tab is minimized, backgrounded, or the screen is locked — the alarm can fire late or not at all in that state, most noticeable on mobile.
+- The **Screen Wake Lock** only keeps the screen on while the tab is active; it is auto-released once the tab is hidden.
+- A fully reliable fix would require a **service worker with the Push API** for true OS-level background delivery.
 
 ---
 
-## 🚧 Future Improvements
+## 🚧 Future Enhancements
 
-- Wire up the existing Red Line station data into the seed scripts to make it operational
-- Cross-line routing / interchange support (currently limited to same-line journeys)
-- Support for additional metro lines beyond Yellow (and Red, once seeded)
-- Push notifications via a service worker for true background delivery
-- Password reset / email verification flow
-- Unit and integration test coverage
+- 🗺️ Support for multiple Delhi Metro lines with automatic route selection and interchange handling.
+- Cross-line routing / interchange support (currently limited to yellow-line only)
+- Push notifications via a service worker for true background alarm delivery
+- Automated unit and integration test coverage
+- 📍 Live metro arrival and delay integration using official or third-party transit APIs.
+- ⭐ Save and manage favorite routes for one-tap alarm creation.
+- 📊 Travel history and analytics dashboard with past trips and usage statistics.
+- ⏱️ Personalized walking and safety buffer before reaching the destination.
+- 🔔 Smarter notifications with vibration, custom alarm sounds, and snooze options.
+- 🌐 Enhanced Progressive Web App (PWA) support with improved offline capabilities and installable experience.
+- 📱 Native Android/iOS support using Capacitor or React Native for reliable background alarms.
+- 🤖 AI-powered travel recommendations based on historical travel patterns and peak-hour conditions.
+- 🚇 Dynamic ETA calculation using real-time train frequency, congestion, and service updates.
 
 ---
 
 ## 🚀 Deployment
 
 - **Frontend:** Deployable as a static Vite build (e.g. Vercel, Netlify) — set `VITE_API_URL` to the deployed backend URL.
-- **Backend:** Deployable to any Node host (e.g. Render, Railway) — set `MONGO_URI`, `JWT_SECRET`, and `CLIENT_URL` in the environment.
+- **Backend:** Deployable to any Node host (e.g. Render, Railway) — set `MONGO_URI`, `JWT_SECRET`, and `CLIENT_URL` in the environment. CORS is pre-configured to also allow any `*.vercel.app` preview deployment.
 
 ---
 
