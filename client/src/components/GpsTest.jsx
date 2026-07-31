@@ -209,7 +209,23 @@ function GpsTest({ alarm, token, onCancel }) {
         target.lat,
         target.lng
       );
-      if (initialDistanceRef.current == null) initialDistanceRef.current = d;
+      // The very first GPS fix is often the least accurate one (a coarse
+      // provisional fix before the receiver settles), so treating it as a
+      // permanent 100%-of-journey baseline can corrupt the progress
+      // percentage for the rest of the trip — the bar can get stuck near
+      // 0% (if that first fix undershot the true distance) or race ahead
+      // inconsistently (if it overshot). Since the destination is being
+      // approached, distance should trend downward, so track the LARGEST
+      // distance-to-target seen so far as the baseline instead of only
+      // ever the first reading: any later reading farther than the
+      // current baseline simply means an earlier reading undershot the
+      // true starting distance, and the baseline self-corrects upward to
+      // match it. This doesn't filter or reject any reading (so mocked
+      // Chrome DevTools coordinates are unaffected) — it only fixes which
+      // reading gets used as the denominator for the progress ratio.
+      if (initialDistanceRef.current == null || d > initialDistanceRef.current) {
+        initialDistanceRef.current = d;
+      }
       setDistance(d);
       setStatus(`GPS mode — ${Math.round(d)}m from ${targetName}`);
       if (d <= alarm.triggerDistance) fireAlarm();
