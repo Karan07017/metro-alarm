@@ -165,6 +165,31 @@ function GpsTest({ alarm, token, onCancel }) {
     if (failCount >= 1) setFallbackMode(true);
   }, [failCount]);
 
+  // Seed the progress baseline from the journey's TRUE origin, not from
+  // whichever GPS fix happens to arrive first. The origin's coords were
+  // cached client-side at alarm-creation time (see AlarmSetup.jsx, right
+  // after the alarm is created) since the Alarm document itself never
+  // stores them. This runs as soon as the alarm is known — before any GPS
+  // position exists — and computes a distance that is fixed for the whole
+  // trip, independent of when this device starts/resumes tracking. If no
+  // cached origin exists (e.g. an alarm created before this existed, or
+  // localStorage was cleared), initialDistanceRef stays null here and the
+  // GPS-fix fallback further below covers that case.
+  useEffect(() => {
+    if (initialDistanceRef.current != null || !alarm?._id) return;
+    try {
+      const raw = localStorage.getItem(`metro-alarm:origin:${alarm._id}`);
+      if (!raw) return;
+      const origin = JSON.parse(raw);
+      const target = alarm.triggerCoords || alarm.destinationCoords;
+      if (origin?.lat != null && origin?.lng != null && target) {
+        initialDistanceRef.current = getDistanceMeters(origin.lat, origin.lng, target.lat, target.lng);
+      }
+    } catch (err) {
+      console.error('Failed to read cached origin coords:', err);
+    }
+  }, [alarm]);
+
   // Capture the device/server clock offset as soon as the journey's
   // startTime is known (i.e. right when this screen mounts after Start
   // Journey), NOT when GPS later fails and fallback mode kicks in. If this
@@ -209,14 +234,13 @@ function GpsTest({ alarm, token, onCancel }) {
         target.lat,
         target.lng
       );
-      // Capture the ORIGINAL distance-to-target exactly once, from the
-      // first GPS fix received for this journey, and never overwrite it
-      // afterwards. Every later progress/ETA calculation below treats this
-      // as the fixed denominator ("how far away the trip started"), so it
-      // must stay constant for the rest of the trip — see the
-      // gpsRemainingMinutes comment further down, which explicitly relies
-      // on "the original straight-line distance" being a single fixed
-      // value, not something that keeps changing as new fixes arrive.
+      // Normally initialDistanceRef is already set by the cached-origin
+      // effect above, from the journey's real starting point — this branch
+      // only runs as a fallback when no cached origin was found (e.g. an
+      // alarm created before that cache existed). In that fallback case
+      // this is still captured exactly once, from the first fix, and never
+      // overwritten afterwards — see the gpsRemainingMinutes comment
+      // further down, which relies on this being a single fixed value.
       if (initialDistanceRef.current == null) {
         initialDistanceRef.current = d;
       }
@@ -251,6 +275,11 @@ function GpsTest({ alarm, token, onCancel }) {
     navigator.geolocation.clearWatch(watchIdRef.current);
     wakeLockRef.current?.release().catch(() => { });
     try {
+      localStorage.removeItem(`metro-alarm:origin:${alarm._id}`);
+    } catch (err) {
+      console.error('Failed to clear cached origin coords:', err);
+    }
+    try {
       await fetch(`${API_BASE_URL}/api/alarms/${alarm._id}`, {
         method: 'PATCH',
         // headers: { 'Content-Type': 'application/json' },
@@ -268,6 +297,11 @@ function GpsTest({ alarm, token, onCancel }) {
   const handleCancel = async () => {
 
     navigator.geolocation.clearWatch(watchIdRef.current);
+    try {
+      localStorage.removeItem(`metro-alarm:origin:${alarm._id}`);
+    } catch (err) {
+      console.error('Failed to clear cached origin coords:', err);
+    }
     try {
       await fetch(`${API_BASE_URL}/api/alarms/${alarm._id}`, {
         method: 'PATCH',

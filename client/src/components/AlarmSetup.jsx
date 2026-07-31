@@ -252,6 +252,24 @@ function AlarmSetup({ token, mode = 'gps', onAlarmCreated, onChangeMode }) {
       if (!res.ok) throw new Error((await res.json()).error || 'Alarm creation failed');
       let alarm = await res.json();
 
+      // The Alarm document only stores the destination/trigger coords — the
+      // origin ("From") station's coords are never persisted server-side.
+      // Cache them locally, keyed by this alarm's id, so GpsTest can later
+      // compute the TRUE, fixed origin→target distance for the GPS progress
+      // bar (see GpsTest.jsx) instead of treating whatever GPS fix happens
+      // to arrive first — possibly mid-journey — as the journey's start.
+      const originStation = stations.find((s) => s._id === fromId);
+      if (originStation?.coords) {
+        try {
+          localStorage.setItem(
+            `metro-alarm:origin:${alarm._id}`,
+            JSON.stringify({ lat: originStation.coords.lat, lng: originStation.coords.lng })
+          );
+        } catch (err) {
+          console.error('Failed to cache origin coords:', err);
+        }
+      }
+
       // Time Based mode chosen upfront on the landing screen — set the
       // trigger mode immediately instead of waiting for a GPS failure.
       if (mode === 'time') {
