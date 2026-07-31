@@ -4,12 +4,7 @@ const Station = require('../models/Station');
 
 const AVG_MINUTES_PER_GAP = 2; // TravelTime seed jaisa hi consistent rakho
 
-/**
- * Kisi bhi do stations (same line) ke beech total expected travel time nikaalta hai.
- * Saath hi "alert station" bhi nikaalta hai — destination se ek stop pehle wala
- * station, direction of travel ke hisaab se — taaki alarm exact destination pe
- * nahi, balki ek station pehle hi trigger ho jaaye.
- */
+
 const calculateTravelTime = async (fromStationId, toStationId) => {
     const fromStation = await Station.findById(fromStationId);
     const toStation = await Station.findById(toStationId);

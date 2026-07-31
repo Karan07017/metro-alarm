@@ -18,8 +18,7 @@ function StartJourney({ alarm, token, onStarted, onCancel }) {
     setLoading(true);
     setError(null);
 
-    // Notification permission requested inside the user click, otherwise
-    // most browsers silently block it.
+  
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }

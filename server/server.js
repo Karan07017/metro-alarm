@@ -8,8 +8,7 @@ connectDB();
 
 const app = express();
 
-// CLIENT_URL can be a single origin or a comma-separated list (useful for
-// preview + production frontend URLs). Falls back to "*" for local dev.
+
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map((o) => o.trim())
   : '*';

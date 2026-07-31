@@ -1,8 +1,6 @@
 import { motion } from 'framer-motion';
 
-// Signature element: a metro line with the current train position travelling
-// toward the destination stop. Doubles as a progress indicator across the
-// hero, GPS tracking screen and the active-alarm screen.
+
 export default function MetroLine({ progress = 0, mode = 'gps', triggered = false, compact = false }) {
   const clamped = Math.min(1, Math.max(0, progress));
   const gradientId = mode === 'time' ? 'metroLineTime' : 'metroLineGps';
